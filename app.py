@@ -3,7 +3,7 @@ import pandas as pd
 import math
 
 # Page Configurations
-st.set_page_config(page_title="Human Capital Forecasting Engine", layout="wide")
+st.set_page_config(page_title="Human Capital Sourcing & Capacity Engine", layout="wide")
 
 st.title("Fireworks AI: Human Capital Sourcing & Capacity Engine")
 st.markdown("### Structural Scale Modeling: 200 to 600 Total Employees")
@@ -31,7 +31,7 @@ quota_gtm = st.sidebar.number_input("GTM Recruiter Quota", value=12)
 quota_ga = st.sidebar.number_input("G&A Recruiter Quota", value=15)
 
 st.sidebar.header("5. Team Span Ratios")
-manager_ratio = st.sidebar.number_input("ICs per Recruiting Manager", value=9)
+manager_ratio = st.sidebar.number_input("ICs per Recruiting Manager", value=10)
 
 # Engine Calculations: The Quarterly Waterfall
 net_growth_per_quarter = (target_hc - base_hc) / 4
@@ -69,24 +69,33 @@ total_offers = offers_tech + offers_gtm + offers_ga
 
 # Ramped Steady-State TA Recruiter Capacity Needs
 rec_tech_needed = (offers_tech / 4) / quota_tech
+rec_tech_peak = (offers_tech / 4) / (quota_tech * 0.75) # Handles early ramp lag
 rec_gtm_needed = (offers_gtm / 4) / quota_gtm
 rec_ga_needed = (offers_ga / 4) / quota_ga
 
 # Sourcing Footprint Modifiers
-sourcer_tech = rec_tech_needed * 0.5
+sourcer_tech_steady = rec_tech_needed * 0.5
+sourcer_tech_peak = rec_tech_peak * 0.5
 sourcer_gtm = rec_gtm_needed * 0.25
 
-# Layered Management Pod Consolidation Logic
-gtm_ga_ics = rec_gtm_needed + rec_ga_needed + sourcer_gtm
-eng_ics = rec_tech_needed + sourcer_tech
+# Layered Management Pod Consolidation Logic (Priority: GTM/G&A -> Intl -> Eng)
+# Separate International vs NA split for GTM/G&A to mirror geographic parameters
+gtm_ga_intl_ics = (rec_gtm_needed + rec_ga_needed + sourcer_gtm) * 0.25
+gtm_ga_na_ics = (rec_gtm_needed + rec_ga_needed + sourcer_gtm) * 0.75
+eng_ics_steady = rec_tech_needed + sourcer_tech_steady
+eng_ics_peak = rec_tech_peak + sourcer_tech_peak
 
-# Calculate managers per pod based on your priority rules
-gtm_ga_managers = math.ceil(gtm_ga_ics / manager_ratio) if gtm_ga_ics > 0 else 0
-eng_managers = math.ceil(eng_ics / manager_ratio) if eng_ics > 0 else 0
+# Steady State Manager Podting
+mgr_gtm_ga_na_steady = math.ceil(gtm_ga_na_ics / manager_ratio) if gtm_ga_na_ics > 0 else 0
+mgr_intl_steady = math.ceil(gtm_ga_intl_ics / manager_ratio) if gtm_ga_intl_ics > 0 else 0
+mgr_eng_steady = math.ceil(eng_ics_steady / manager_ratio) if eng_ics_steady > 0 else 0
+total_managers_steady = mgr_gtm_ga_na_steady + mgr_intl_steady + mgr_eng_steady
 
-# Total consolidated manager headcount
-managers_needed = gtm_ga_managers + eng_managers
-
+# Peak Scale-Up Manager Podting
+mgr_gtm_ga_na_peak = math.ceil(gtm_ga_na_ics / manager_ratio) if gtm_ga_na_ics > 0 else 0
+mgr_intl_peak = math.ceil(gtm_ga_intl_ics / manager_ratio) if gtm_ga_intl_ics > 0 else 0
+mgr_eng_peak = math.ceil(eng_ics_peak / manager_ratio) if eng_ics_peak > 0 else 0
+total_managers_peak = mgr_gtm_ga_na_peak + mgr_intl_peak + mgr_eng_peak
 
 # UI Data Layout Modules
 col1, col2, col3 = st.columns(3)
@@ -109,23 +118,23 @@ infrastructure_template = pd.DataFrame({
         "Talent Operations Leader"
     ],
     "Steady-State Run Rate (FTEs)": [
-        round(max(1.0, math.ceil(managers_needed)), 1),
+        total_managers_steady,
         round(max(1.0, math.ceil(rec_tech_needed)), 1),
         round(max(1.0, math.ceil(rec_gtm_needed)), 1),
         round(max(1.0, math.ceil(rec_ga_needed)), 1),
-        round(max(1.0, math.ceil(sourcer_tech + sourcer_gtm)), 1),
+        round(max(1.0, math.ceil(sourcer_tech_steady + sourcer_gtm)), 1),
         1.0
     ],
     "Peak Scale-Up Staffing (Months 1-6)": [
-        round(max(1.0, math.ceil(managers_needed)), 1),
-        round(max(1.0, math.ceil(rec_tech_needed * 1.25)), 1), # Adds front-loaded ramp cushion
-        round(max(1.0, math.ceil(rec_gtm_needed * 1.2)), 1),
+        total_managers_peak,
+        round(max(1.0, math.ceil(rec_tech_peak)), 1),
+        round(max(1.0, math.ceil(rec_gtm_needed * 1.5)), 1),
         round(max(1.0, math.ceil(rec_ga_needed)), 1),
-        round(max(1.0, math.ceil((sourcer_tech + sourcer_gtm) * 1.25)), 1),
+        round(max(1.0, math.ceil(sourcer_tech_peak + sourcer_gtm)), 1),
         1.0
     ],
     "Strategic Guardrails & Framework Scope": [
-        f"Calculated via a strict {manager_ratio}:1 IC monitoring ratio topology.",
+        f"Consolidated priority pods using a tight 1:{manager_ratio} management capacity limit.",
         f"Anchored against a conservative {int(accept_tech*100)}% Bay Area tech acceptance model.",
         f"Reflects a global {int(accept_gtm*100)}% conversion average with senior market protections.",
         f"Optimized to hit high-velocity {int(accept_ga*100)}% conversion pipelines easily.",
