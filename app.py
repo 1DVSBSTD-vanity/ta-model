@@ -32,6 +32,7 @@ quota_ga = st.sidebar.number_input("G&A Recruiter Quota", value=15)
 
 st.sidebar.header("5. Team Span Ratios")
 manager_ratio = st.sidebar.number_input("ICs per Recruiting Manager", value=10)
+coord_ratio = st.sidebar.number_input("ICs per Talent Coordinator", value=4)
 
 # Engine Calculations: The Quarterly Waterfall
 net_growth_per_quarter = (target_hc - base_hc) / 4
@@ -67,35 +68,50 @@ offers_gtm = total_gtm_hires / accept_gtm
 offers_ga = total_ga_hires / accept_ga
 total_offers = offers_tech + offers_gtm + offers_ga
 
-# Ramped Steady-State TA Recruiter Capacity Needs
-rec_tech_needed = (offers_tech / 4) / quota_tech
-rec_tech_peak = (offers_tech / 4) / (quota_tech * 0.75) # Handles early ramp lag
-rec_gtm_needed = (offers_gtm / 4) / quota_gtm
-rec_ga_needed = (offers_ga / 4) / quota_ga
+# Recruiter Capacity Needs (Steady State vs. Peak Early Ramp)
+rec_tech_steady = math.ceil((offers_tech / 4) / quota_tech)
+rec_tech_peak = math.ceil((offers_tech / 4) / (quota_tech * 0.75))
+
+rec_gtm_steady = math.ceil((offers_gtm / 4) / quota_gtm)
+rec_gtm_peak = math.ceil(rec_gtm_steady * 1.5)
+
+rec_ga_steady = math.ceil((offers_ga / 4) / quota_ga)
+rec_ga_peak = rec_ga_steady
 
 # Sourcing Footprint Modifiers
-sourcer_tech_steady = rec_tech_needed * 0.5
-sourcer_tech_peak = rec_tech_peak * 0.5
-sourcer_gtm = rec_gtm_needed * 0.25
+sourcer_tech_steady = math.ceil(rec_tech_steady * 0.5)
+sourcer_tech_peak = math.ceil(rec_tech_peak * 0.5)
+sourcer_gtm_steady = math.ceil(rec_gtm_steady * 0.25)
+sourcer_gtm_peak = math.ceil(rec_gtm_peak * 0.25)
 
-# Layered Management Pod Consolidation Logic (Priority: GTM/G&A -> Intl -> Eng)
-# Separate International vs NA split for GTM/G&A to mirror geographic parameters
-gtm_ga_intl_ics = (rec_gtm_needed + rec_ga_needed + sourcer_gtm) * 0.25
-gtm_ga_na_ics = (rec_gtm_needed + rec_ga_needed + sourcer_gtm) * 0.75
-eng_ics_steady = rec_tech_needed + sourcer_tech_steady
+# Talent Coordinators Logic (1 Per 4 Active Production ICs)
+coord_steady = math.ceil((rec_tech_steady + rec_gtm_steady + rec_ga_steady + sourcer_tech_steady + sourcer_gtm_steady) / coord_ratio)
+coord_peak = math.ceil((rec_tech_peak + rec_gtm_peak + rec_ga_peak + sourcer_tech_peak + sourcer_gtm_peak) / coord_ratio)
+
+# Consolidated Pod Management Logic (Priority Order: GTM/G&A -> International -> Eng)
+# 1. GTM/G&A Pod (Combined National Pool)
+gtm_ga_ics_steady = rec_gtm_steady + rec_ga_steady + sourcer_gtm_steady
+gtm_ga_ics_peak = rec_gtm_peak + rec_ga_peak + sourcer_gtm_peak
+
+# 2. International Footprint Extract (Assumes 25% allocation to EMEA/APAC hubs)
+intl_ics_steady = math.ceil(gtm_ga_ics_steady * 0.25)
+intl_ics_peak = math.ceil(gtm_ga_ics_peak * 0.25)
+
+# 3. True Net US GTM/G&A IC Pool
+us_gtm_ga_ics_steady = max(0, gtm_ga_ics_steady - intl_ics_steady)
+us_gtm_ga_ics_peak = max(0, gtm_ga_ics_peak - intl_ics_peak)
+
+# 4. Core Engineering Pods
+eng_ics_steady = rec_tech_steady + sourcer_tech_steady
 eng_ics_peak = rec_tech_peak + sourcer_tech_peak
 
-# Steady State Manager Podting
-mgr_gtm_ga_na_steady = math.ceil(gtm_ga_na_ics / manager_ratio) if gtm_ga_na_ics > 0 else 0
-mgr_intl_steady = math.ceil(gtm_ga_intl_ics / manager_ratio) if gtm_ga_intl_ics > 0 else 0
-mgr_eng_steady = math.ceil(eng_ics_steady / manager_ratio) if eng_ics_steady > 0 else 0
-total_managers_steady = mgr_gtm_ga_na_steady + mgr_intl_steady + mgr_eng_steady
+# Final Integer Ceiling Consolidation (Fixes previous version's manager bloat)
+mgr_steady = math.ceil(us_gtm_ga_ics_steady / manager_ratio) + math.ceil(intl_ics_steady / manager_ratio) + math.ceil(eng_ics_steady / manager_ratio)
+mgr_peak = math.ceil(us_gtm_ga_ics_peak / manager_ratio) + math.ceil(intl_ics_peak / manager_ratio) + math.ceil(eng_ics_peak / manager_ratio)
 
-# Peak Scale-Up Manager Podting
-mgr_gtm_ga_na_peak = math.ceil(gtm_ga_na_ics / manager_ratio) if gtm_ga_na_ics > 0 else 0
-mgr_intl_peak = math.ceil(gtm_ga_intl_ics / manager_ratio) if gtm_ga_intl_ics > 0 else 0
-mgr_eng_peak = math.ceil(eng_ics_peak / manager_ratio) if eng_ics_peak > 0 else 0
-total_managers_peak = mgr_gtm_ga_na_peak + mgr_intl_peak + mgr_eng_peak
+# Ensure baseline structural management logic floor defaults safely
+total_managers_steady = max(1, mgr_steady)
+total_managers_peak = max(1, mgr_peak)
 
 # UI Data Layout Modules
 col1, col2, col3 = st.columns(3)
@@ -115,30 +131,34 @@ infrastructure_template = pd.DataFrame({
         "GTM Recruiters",
         "G&A Recruiters",
         "Dedicated Sourcing Partners",
+        "Talent Coordinators",
         "Talent Operations Leader"
     ],
     "Steady-State Run Rate (FTEs)": [
-        total_managers_steady,
-        round(max(1.0, math.ceil(rec_tech_needed)), 1),
-        round(max(1.0, math.ceil(rec_gtm_needed)), 1),
-        round(max(1.0, math.ceil(rec_ga_needed)), 1),
-        round(max(1.0, math.ceil(sourcer_tech_steady + sourcer_gtm)), 1),
+        int(total_managers_steady),
+        int(rec_tech_steady),
+        int(rec_gtm_steady),
+        int(rec_ga_steady),
+        int(sourcer_tech_steady + sourcer_gtm_steady),
+        int(coord_steady),
         1.0
     ],
     "Peak Scale-Up Staffing (Months 1-6)": [
-        total_managers_peak,
-        round(max(1.0, math.ceil(rec_tech_peak)), 1),
-        round(max(1.0, math.ceil(rec_gtm_needed * 1.5)), 1),
-        round(max(1.0, math.ceil(rec_ga_needed)), 1),
-        round(max(1.0, math.ceil(sourcer_tech_peak + sourcer_gtm)), 1),
+        int(total_managers_peak),
+        int(rec_tech_peak),
+        int(rec_gtm_peak),
+        int(rec_ga_peak),
+        int(sourcer_tech_peak + sourcer_gtm_peak),
+        int(coord_peak),
         1.0
     ],
     "Strategic Guardrails & Framework Scope": [
-        f"Consolidated priority pods using a tight 1:{manager_ratio} management capacity limit.",
+        f"Consolidated priority pods using a strict 1:{manager_ratio} management capacity tracking floor.",
         f"Anchored against a conservative {int(accept_tech*100)}% Bay Area tech acceptance model.",
         f"Reflects a global {int(accept_gtm*100)}% conversion average with senior market protections.",
         f"Optimized to hit high-velocity {int(accept_ga*100)}% conversion pipelines easily.",
-        "Front-loaded 1:2 on Tech and 1:4 on GTM to insulate initial pipelines.",
+        "Front-loaded 1:2 on Tech and 1:4 on GTM to insulate pipeline health.",
+        f"Maintains a strict 1:{coord_ratio} pipeline processing ratio for optimal interviewing speeds.",
         "Fixed core asset. Cleanly isolates compensation/mobility to separate People paths."
     ]
 })
