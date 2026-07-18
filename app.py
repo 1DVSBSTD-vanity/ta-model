@@ -75,8 +75,18 @@ rec_ga_needed = (offers_ga / 4) / quota_ga
 # Sourcing Footprint Modifiers
 sourcer_tech = rec_tech_needed * 0.5
 sourcer_gtm = rec_gtm_needed * 0.25
-total_ic_squad = rec_tech_needed + rec_gtm_needed + rec_ga_needed + sourcer_tech + sourcer_gtm
-managers_needed = total_ic_squad / manager_ratio
+
+# Layered Management Pod Consolidation Logic
+gtm_ga_ics = rec_gtm_needed + rec_ga_needed + sourcer_gtm
+eng_ics = rec_tech_needed + sourcer_tech
+
+# Calculate managers per pod based on your priority rules
+gtm_ga_managers = math.ceil(gtm_ga_ics / manager_ratio) if gtm_ga_ics > 0 else 0
+eng_managers = math.ceil(eng_ics / manager_ratio) if eng_ics > 0 else 0
+
+# Total consolidated manager headcount
+managers_needed = gtm_ga_managers + eng_managers
+
 
 # UI Data Layout Modules
 col1, col2, col3 = st.columns(3)
