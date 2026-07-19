@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 import math
 
 # =====================================================================
@@ -116,42 +115,43 @@ for q in quarters:
     # Cycle starting headcount forward
     current_starting_hc = current_ending_hc
 
-# =====================================================================
-# 4. ROW-SAFE MATRIX CONSTRUCTOR
-# =====================================================================
-matrix_rows = [
-    ["📋 COMPANY LEVEL HYPERSCALE PIPELINE", "", "", "", "", ""],
-    ["Starting Headcount (TTM)", int(start_hc["Q1"]), int(start_hc["Q2"]), int(start_hc["Q3"]), int(start_hc["Q4"]), "—"],
-    ["Net Planned Growth", int(net_growth["Q1"]), int(net_growth["Q2"]), int(net_growth["Q3"]), int(net_growth["Q4"]), int(sum(net_growth.values()))],
-    ["TTM Attrition Backfills", int(attrition_backfills["Q1"]), int(attrition_backfills["Q2"]), int(attrition_backfills["Q3"]), int(attrition_backfills["Q4"]), int(sum(attrition_backfills.values()))],
-    ["Ending Headcount Blueprint", int(end_hc["Q1"]), int(end_hc["Q2"]), int(end_hc["Q3"]), int(end_hc["Q4"]), "—"],
-    ["Total Target Hires Needed", int(total_hires_needed["Q1"]), int(total_hires_needed["Q2"]), int(total_hires_needed["Q3"]), int(total_hires_needed["Q4"]), int(sum(total_hires_needed.values()))],
-    
-    ["🎯 PIPELINE OFFERS REQUIRED", "", "", "", "", ""],
-    ["AMER Tech Offers Required", int(offers_tech["Q1"]), int(offers_tech["Q2"]), int(offers_tech["Q3"]), int(offers_tech["Q4"]), int(sum(offers_tech.values()))],
-    ["Global GTM Offers Required", int(offers_gtm["Q1"]), int(offers_gtm["Q2"]), int(offers_gtm["Q3"]), int(offers_gtm["Q4"]), int(sum(offers_gtm.values()))],
-    ["G&A Offers Required", int(offers_ga["Q1"]), int(offers_ga["Q2"]), int(offers_ga["Q3"]), int(offers_ga["Q4"]), int(sum(offers_ga.values()))],
-    
-    ["🛠️ TALENT ACQUISITION ORG CAPACITY REQUIREMENTS", "", "", "", "", ""],
-    ["Technical Recruiters Required", int(req_tech_rec["Q1"]), int(req_tech_rec["Q2"]), int(req_tech_rec["Q3"]), int(req_tech_rec["Q4"]), "—"],
-    ["GTM Recruiters Required", int(req_gtm_rec["Q1"]), int(req_gtm_rec["Q2"]), int(req_gtm_rec["Q3"]), int(req_gtm_rec["Q4"]), "—"],
-    ["G&A Recruiters Required", int(req_ga_rec["Q1"]), int(req_ga_rec["Q2"]), int(req_ga_rec["Q3"]), int(req_ga_rec["Q4"]), "—"],
-    ["Dedicated Sourcing Partners", int(req_src["Q1"]), int(req_src["Q2"]), int(req_src["Q3"]), int(req_src["Q4"]), "—"],
-    ["Recruiting Coordinators", int(req_coord["Q1"]), int(req_coord["Q2"]), int(req_coord["Q3"]), int(req_coord["Q4"]), "—"],
-    ["Recruiting Managers Required", int(req_mgr["Q1"]), int(req_mgr["Q2"]), int(req_mgr["Q3"]), int(req_mgr["Q4"]), "—"],
-    ["Talent Operations Leader", int(req_ops["Q1"]), int(req_ops["Q2"]), int(req_ops["Q3"]), int(req_ops["Q4"]), "—"]
-]
-
-df_model = pd.DataFrame(
-    matrix_rows, 
-    columns=["Metric Waterfall Profile Layer", "Q1", "Q2", "Q3", "Q4", "12-Month Total"]
-)
+# Calculations for Totals
+total_hires_sum = int(sum(total_hires_needed.values()))
+peak_org_size = req_tech_rec['Q4'] + req_gtm_rec['Q4'] + req_ga_rec['Q4'] + req_src['Q4'] + req_coord['Q4'] + req_mgr['Q4'] + req_ops['Q4']
 
 # =====================================================================
-# 5. DATA PRESENTATION LAYOUT (FULL WIDE BLOCK-LEVEL LAYOUT)
+# 4. KPI DISPLAY SECTION
 # =====================================================================
-# Render KPIs cleanly side-by-side above the table using standard horizontal metrics layout
-kpi_col1, kpi_col2 = st.columns(2)
-peak_org = req_tech_rec['Q4'] + req_gtm_rec['Q4'] + req_ga_rec['Q4'] + req_src['Q4'] + req_coord['Q4'] + req_mgr['Q4'] + req_ops['Q4']
+kpi1, kpi2 = st.columns(2)
+kpi1.metric("Total 12-Month Hires Target", value=f"{total_hires_sum} Hires")
+kpi2.metric("Peak Target TA Organization Size", value=f"{peak_org_size} FTE")
+st.markdown("---")
 
-kpi_col1.metric("Total 12-Month Hires Target", value=f"{sum(total_hires_needed.values())} Hires")
+# =====================================================================
+# 5. MARKDOWN-BASED ERROR-PROOF MATRIX TABLE DISPLAY
+# =====================================================================
+st.subheader("📋 Metric Waterfall Model")
+
+# Constructing raw HTML/Markdown table text block
+markdown_table = f"""
+
+| Metric Waterfall Profile Layer | Q1 | Q2 | Q3 | Q4 | 12-Month Total |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **📋 COMPANY LEVEL HYPERSCALE PIPELINE** | | | | | |
+| Starting Headcount (TTM) | {int(start_hc["Q1"])} | {int(start_hc["Q2"])} | {int(start_hc["Q3"])} | {int(start_hc["Q4"])} | — |
+| Net Planned Growth | {int(net_growth["Q1"])} | {int(net_growth["Q2"])} | {int(net_growth["Q3"])} | {int(net_growth["Q4"])} | {int(sum(net_growth.values()))} |
+| TTM Attrition Backfills | {int(attrition_backfills["Q1"])} | {int(attrition_backfills["Q2"])} | {int(attrition_backfills["Q3"])} | {int(attrition_backfills["Q4"])} | {int(sum(attrition_backfills.values()))} |
+| Ending Headcount Blueprint | {int(end_hc["Q1"])} | {int(end_hc["Q2"])} | {int(end_hc["Q3"])} | {int(end_hc["Q4"])} | — |
+| **Total Target Hires Needed** | **{int(total_hires_needed["Q1"])}** | **{int(total_hires_needed["Q2"])}** | **{int(total_hires_needed["Q3"])}** | **{int(total_hires_needed["Q4"])}** | **{total_hires_sum}** |
+| | | | | | |
+| **🎯 PIPELINE OFFERS REQUIRED** | | | | | |
+| AMER Tech Offers Required | {int(offers_tech["Q1"])} | {int(offers_tech["Q2"])} | {int(offers_tech["Q3"])} | {int(offers_tech["Q4"])} | {int(sum(offers_tech.values()))} |
+| Global GTM Offers Required | {int(offers_gtm["Q1"])} | {int(offers_gtm["Q2"])} | {int(offers_gtm["Q3"])} | {int(offers_gtm["Q4"])} | {int(sum(offers_gtm.values()))} |
+| G&A Offers Required | {int(offers_ga["Q1"])} | {int(offers_ga["Q2"])} | {int(offers_ga["Q3"])} | {int(offers_ga["Q4"])} | {int(sum(offers_ga.values()))} |
+| | | | | | |
+| **🛠️ TALENT ACQUISITION ORG CAPACITY REQUIREMENTS** | | | | | |
+| Technical Recruiters Required | {int(req_tech_rec["Q1"])} | {int(req_tech_rec["Q2"])} | {int(req_tech_rec["Q3"])} | {int(req_tech_rec["Q4"])} | — |
+| GTM Recruiters Required | {int(req_gtm_rec["Q1"])} | {int(req_gtm_rec["Q2"])} | {int(req_gtm_rec["Q3"])} | {int(req_gtm_rec["Q4"])} | — |
+| G&A Recruiters Required | {int(req_ga_rec["Q1"])} | {int(req_ga_rec["Q2"])} | {int(req_ga_rec["Q3"])} | {int(req_ga_rec["Q4"])} | — |
+| Dedicated Sourcing Partners | {int(req_src["Q1"])} | {int(req_src["Q2"])} | {int(req_src["Q3"])} | {int(req_src["Q4"])} | — |
+| Recruiting Coordinators | {int(req_coord["Q1"])} | {int(req_coord["Q2"])} | {int(req_coord["Q3"])} | {int(req_coord["Q4"])} | — |
