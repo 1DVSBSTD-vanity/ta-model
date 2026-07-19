@@ -33,7 +33,6 @@ with st.sidebar:
 
     with st.expander("🌍 Geographic & Segment Weights", expanded=True):
         amer_alloc = st.slider("AMER Allocation (%)", min_value=0.0, max_value=100.0, value=75.0, step=1.0) / 100.0
-        # Combine EMEA and APAC to calculate the aggregate international capacity factor
         emea_alloc = st.slider("EMEA Allocation (%)", min_value=0.0, max_value=100.0, value=17.0, step=1.0) / 100.0
         apac_alloc = st.slider("APAC Allocation (%)", min_value=0.0, max_value=100.0, value=8.0, step=1.0) / 100.0
         intl_alloc = (emea_alloc + apac_alloc) / 100.0
@@ -92,11 +91,8 @@ for q in quarters:
     offers_gtm[q] = math.ceil((total_hires_needed[q] * gtm_alloc) / gtm_accept) if gtm_accept > 0 else 0
     offers_ga[q] = math.ceil((total_hires_needed[q] * ga_alloc) / ga_accept) if ga_accept > 0 else 0
     
-    # Calculate weighted quarterly recruiter capacity combining AMER baseline and International expectations
-    # 90-day universal ramp penalty lowers baseline production for the first quarter of deployment
-    ramp_factor = (1.0 - universal_ramp_penalty) if q == "Q1" else 1.0
-    
     # Blended capacity factor equation based on geographic distribution splits
+    ramp_factor = (1.0 - universal_ramp_penalty) if q == "Q1" else 1.0
     amer_pct = amer_alloc / 100.0
     intl_pct = intl_alloc
     
@@ -152,8 +148,10 @@ df_model = pd.DataFrame(
 )
 
 # =====================================================================
-# 5. DATA PRESENTATION LAYOUT
+# 5. DATA PRESENTATION LAYOUT (SAFE SEQUENTIAL LAYOUT)
 # =====================================================================
-col_data1, col_data2 = st.columns([1, 4])
+col_data1, col_data2 = st.columns([1, 3])
 
-with col_data1:
+# Populate column 1 with micro highlights using sequential commands
+peak_org = req_tech_rec['Q4'] + req_gtm_rec['Q4'] + req_ga_rec['Q4'] + req_src['Q4'] + req_coord['Q4'] + req_mgr['Q4'] + req_ops['Q4']
+col_data1.metric("Total 12-Month Hires", value=f"{sum(total_hires_needed.values())} Hires")
