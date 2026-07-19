@@ -1,140 +1,118 @@
 import streamlit as st
-import gspread
-from google.oauth2.service_account import Credentials
-import math
 import pandas as pd
+import math
+import io
 
 # =====================================================================
-# 1. PAGE CONFIGURATION & LAYOUT
+# 1. APP CONFIGURATION
 # =====================================================================
-st.set_page_config(
-    page_title="Data Alignment Portal",
-    page_icon="📊",
-    layout="wide"
-)
-
-st.title("📊 Application Data Portal")
-st.subheader("Google Sheets & Gamma Synchronization System")
+st.set_page_config(page_title="TA Resource Model Calculator", layout="wide")
+st.title("📊 Fireworks AI: TA Resource Model Calculator")
 
 # =====================================================================
-# 2. GOOGLE SHEETS API CONNECTION SETUP
+# 2. FILE UPLOADER (Connects your local Excel file)
 # =====================================================================
-@st.cache_resource
-def init_google_sheets():
-    """Establishes connection to Google Sheets using Streamlit Secrets."""
-    try:
-        # Define the access scopes needed
-        scopes = [
-            "https://googleapis.com",
-            "https://googleapis.com"
-        ]
-        
-        # Load credentials securely from st.secrets
-        # Ensure your secrets.toml has a [gcp_service_account] section
-        creds = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"], 
-            scopes=scopes
-        )
-        
-        # Authorize gspread client
-        client = gspread.authorize(creds)
-        return client
-    except Exception as e:
-        st.error(f"⚠️ Google Sheets Authentication Failed: {e}")
-        return None
+st.info("📂 Please upload 'Fireworks AI_ TA Resource Model Calculator.xlsx' to initialize the model.")
+uploaded_file = st.file_uploader("Upload Excel Model", type=["xlsx"])
 
-# Initialize the client
-gc = init_google_sheets()
+if uploaded_file:
+    # Read the Excel file
+    # NOTE: If your data is on a specific sheet, change sheet_name=0 to the name, e.g., sheet_name="Inputs"
+    df = pd.read_excel(uploaded_file, sheet_name=0)
 
-# =====================================================================
-# 3. USER INPUT INTERFACE
-# =====================================================================
-st.markdown("### 📥 Enter Transaction or Layout Matrix Data")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    item_name = st.text_input("Item or Project Name", value="New Project Asset")
-
-with col2:
-    # Capturing raw numeric data that might contain uneven floats/decimals
-    raw_metric_value = st.number_input(
-        "Enter Metric Value (Hours, Cost, or Multiplier)", 
-        value=14.23, 
-        step=0.01,
-        help="This raw value will automatically pass through ceiling logic to align with Sheets/Gamma grids."
-    )
-
-with col3:
-    allocation_category = st.selectbox(
-        "Gamma Theme / Category",
-        options=["Core Development", "UI/UX Layout", "Database Sync", "Marketing Operations"]
-    )
-
-# =====================================================================
-# 4. CRITICAL CEILING LOGIC & DATA ALIGNMENT
-# =====================================================================
-# math.ceil() rounds any decimal UP to the next nearest whole integer.
-# Converting to int() removes any trailing '.0' so it fits perfectly into grid columns or flat sheets.
-aligned_integer_value = int(math.ceil(raw_metric_value))
-
-# Layout metrics validation display
-st.markdown("---")
-metric_col1, metric_col2 = st.columns(2)
-with metric_col1:
-    st.metric(label="Raw Input Value", value=f"{raw_metric_value:.2f}")
-with metric_col2:
-    st.metric(label="Ceiling Aligned Integer (Sent to Sheets/Gamma)", value=aligned_integer_value, delta="Aligned UP")
-
-# =====================================================================
-# 5. DATA TRANSMISSION & SYNCHRONIZATION
-# =====================================================================
-st.markdown("### 🚀 Synchronize System Data")
-
-if st.button("Execute Alignment & Push Data", type="primary"):
-    if gc is not None:
-        try:
-            # Open your Google Sheet by name or URL (Replace with your actual sheet name)
-            # Ensure your Service Account email is shared on the Google Sheet as an Editor!
-            sheet = gc.open("Your_Google_Sheet_Name").sheet1
+    # =====================================================================
+    # 3. DYNAMIC CONTROL PANEL
+    # =====================================================================
+    st.sidebar.header("🎛️ Control Panel Variables")
+    
+    # We create a dictionary to store the modified values from the sidebar
+    modified_inputs = {}
+    
+    # Automatically detect numeric columns to create inputs for
+    # You can customize this list if you only want specific columns to be controls
+    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns.tolist()
+    
+    with st.sidebar:
+        st.write("Adjust the drivers below to update the model:")
+        for col in numeric_cols:
+            # Skip columns that look like calculated results (optional filter)
+            if "Total" in col or "Result" in col:
+                continue
+                
+            # Get the initial value from the first row of the Excel file (Baseline)
+            # We assume Row 0 contains the baseline values
+            base_val = float(df[col].iloc[0]) if not pd.isna(df[col].iloc[0]) else 0.0
             
-            # Construct the clean payload utilizing our ceiling-aligned value
-            payload_row = [
-                item_name, 
-                aligned_integer_value,  # Fixed: No decimals to break column widths or alignments
-                allocation_category
-            ]
+            # Create a number input for this column
+            modified_inputs[col] = st.number_input(
+                label=f"{col}",
+                value=base_val,
+                step=1.0 if base_val > 10 else 0.1
+            )
+
+    # =====================================================================
+    # 4. CALCULATION & CEILING LOGIC
+    # =====================================================================
+    # Create a copy of the dataframe to hold our "Scenario" data
+    scenario_df = df.copy()
+    
+    # Update the first row with our new sidebar values
+    for col, new_val in modified_inputs.items():
+        scenario_df.at[0, col] = new_val
+
+    # --- APPLY LOGIC ---
+    # Example: If your model calculates "Headcount Needed" based on these inputs
+    # You likely have a formula. Since we are reading raw data, we simulate a calculation here.
+    # REPLACE the formula below with the actual logic from your Excel file.
+    
+    # Example Logic: (Volume / Capacity) = Raw Headcount
+    # We look for columns named like 'Volume' or 'Capacity' dynamically
+    
+    # Let's try to find a 'Headcount' or similar result column to apply CEILING to
+    # If specific columns need ceiling, list them here:
+    ceiling_columns = [col for col in df.columns if "Headcount" in col or "FTE" in col or "Resource" in col]
+    
+    if ceiling_columns:
+        st.subheader("🛠️ Model Adjustments (Ceiling Applied)")
+        for col in ceiling_columns:
+            # Get the raw value (assuming it might be calculated or just adjusted)
+            raw_val = scenario_df.at[0, col]
             
-            # Append row data to Google Sheets
-            sheet.append_row(payload_row)
-            st.success("✅ Success: Data cleanly appended to Google Sheets matrix!")
+            # 1. Apply Ceiling Logic
+            aligned_val = math.ceil(raw_val)
             
-            # ---------------------------------------------------------
-            # MOCK GAMMA LAYOUT ENGINE SYNC
-            # ---------------------------------------------------------
-            # This is where your Gamma grid structural allocation happens.
-            # Using the aligned integer keeps columns cleanly structured.
-            st.info(f"🔄 Gamma Engine Syncing: Allocated {aligned_integer_value} total block items across grid layout.")
+            # Update the dataframe with the integer value
+            scenario_df.at[0, col] = aligned_val
             
-        except gspread.exceptions.SpreadsheetNotFound:
-            st.error("❌ Google Sheet Error: The specified sheet name was not found. Please verify the exact title.")
-        except Exception as sync_error:
-            st.error(f"❌ Synchronization failed: {sync_error}")
+            # Display the adjustment
+            st.metric(
+                label=f"Adjusted {col}", 
+                value=aligned_val, 
+                delta=f"Rounded up from {raw_val:.2f}"
+            )
     else:
-        st.warning("⚠️ Action blocked: Google Sheets credentials are not configured inside Streamlit Secrets.")
+        # Fallback if no specific columns match
+        st.warning("⚠️ No 'Headcount' or 'FTE' columns found to apply ceiling logic automatically.")
 
-# =====================================================================
-# 6. LOCAL DATA PREVIEW
-# =====================================================================
-st.markdown("---")
-st.markdown("### 📋 Current Active Session Preview Matrix")
+    # =====================================================================
+    # 5. DISPLAY RESULTS
+    # =====================================================================
+    st.divider()
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("📄 Original Baseline (From Excel)")
+        st.dataframe(df, use_container_width=True)
+        
+    with col2:
+        st.subheader("🔮 Scenerio Model (Live Updated)")
+        st.dataframe(scenario_df, use_container_width=True)
 
-# Displaying what the final clean export looks like locally
-preview_data = {
-    "Target Identity": [item_name],
-    "Aligned Unit Metric (Ceiling)": [aligned_integer_value],
-    "Gamma Deployment Vector": [allocation_category]
-}
-
-df_preview = pd.DataFrame(preview_data)
-st.dataframe(df_preview, use_container_width=True)
+else:
+    # Prompt to upload if no file is present
+    st.write("👆 **Please upload the Excel file in the sidebar to begin.**")
+    
+    # Optional: Mock data for visual layout if you want to see how it looks before uploading
+    st.markdown("---")
+    st.caption("Waiting for `Fireworks AI_ TA Resource Model Calculator.xlsx`...")
