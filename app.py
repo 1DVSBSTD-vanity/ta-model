@@ -53,7 +53,7 @@ with st.sidebar:
         ramping_penalty = st.slider("Tech Recruiter Ramping Penalty (%)", min_value=0.0, max_value=100.0, value=25.0, step=1.0) / 100.0
         coordinators_per_recruiter = st.number_input("Coordinators per Recruiter Ratio", value=0.4, step=0.05)
 
-# Verify Allocation Matrix Validation
+# Validate Department Allocations
 if not math.isclose((tech_alloc + gtm_alloc + ga_alloc), 1.0):
     st.warning("⚠️ Warning: Your Departmental Allocations do not sum to 100%. Adjust inputs in the sidebar layout for accurate mathematical modeling.")
 
@@ -61,16 +61,12 @@ if not math.isclose((tech_alloc + gtm_alloc + ga_alloc), 1.0):
 # 3. BACKEND COMPUTATIONAL CASCADE ENGINE (MATHEMATICAL WATERFALL)
 # =====================================================================
 quarters = ["Q1", "Q2", "Q3", "Q4"]
-
-# Step A: Layout Baseline Growth Distribution Profiles
 net_growth_per_q = (target_hc - base_hc) / 4
 
-# Initialize tracking dictionaries for quarterly calculations
-start_hc = {}
-net_growth = {}
-attrition_backfills = {}
-end_hc = {}
-total_hires_needed = {}
+# Initialize metrics dictionaries
+start_hc, net_growth, attrition_backfills, end_hc, total_hires_needed = {}, {}, {}, {}, {}
+offers_tech, offers_gtm, offers_ga = {}, {}, {}
+req_tech_rec, req_gtm_rec, req_ga_rec, req_src, req_coord, req_mgr, req_ops = {}, {}, {}, {}, {}, {}, {}
 
 current_starting_hc = base_hc
 
@@ -78,113 +74,82 @@ for q in quarters:
     start_hc[q] = current_starting_hc
     net_growth[q] = net_growth_per_q
     
-    # Quarterly attrition math mirroring the spreadsheet: ((Start + End) / 2) * (Annual Attrition / 4)
+    # Quarterly Attrition Math
     current_ending_hc = current_starting_hc + net_growth_per_q
     avg_q_hc = (current_starting_hc + current_ending_hc) / 2
-    
-    # We round backfills using math.ceil to cleanly map discrete backfill targets
     attrition_backfills[q] = math.ceil(avg_q_hc * (attrition_rate / 4.0))
     
     end_hc[q] = current_ending_hc
     total_hires_needed[q] = net_growth[q] + attrition_backfills[q]
     
-    # The ending headcount becomes the next quarter's baseline
+    # Offers Required Logic
+    offers_tech[q] = math.ceil((total_hires_needed[q] * tech_alloc) / tech_accept) if tech_accept > 0 else 0
+    offers_gtm[q] = math.ceil((total_hires_needed[q] * gtm_alloc) / gtm_accept) if gtm_accept > 0 else 0
+    offers_ga[q] = math.ceil((total_hires_needed[q] * ga_alloc) / ga_accept) if ga_accept > 0 else 0
+    
+    # TA Organization Size Capacity Scaling (Strict Ceilings)
+    tech_capacity = tech_quota * (1.0 - ramping_penalty)
+    req_tech_rec[q] = math.ceil(offers_tech[q] / tech_capacity) if tech_capacity > 0 else 0
+    req_gtm_rec[q] = math.ceil(offers_gtm[q] / gtm_ent_quota) if gtm_ent_quota > 0 else 0
+    req_ga_rec[q] = math.ceil(offers_ga[q] / ga_quota) if ga_quota > 0 else 0
+    
+    req_src[q] = math.ceil((req_tech_rec[q] * tech_sourcer_ratio) + (req_gtm_rec[q] * gtm_sourcer_ratio))
+    total_active_recs = req_tech_rec[q] + req_gtm_rec[q] + req_ga_rec[q]
+    req_coord[q] = math.ceil(total_active_recs * coordinators_per_recruiter)
+    
+    total_ics = total_active_recs + req_src[q] + req_coord[q]
+    req_mgr[q] = math.ceil(total_ics / ics_per_manager) if ics_per_manager > 0 else 0
+    req_ops[q] = 1
+    
+    # Shift baseline forward
     current_starting_hc = current_ending_hc
 
-# Step B: Pipeline Offer Generation Logic Cascades
-offers_tech = {}
-offers_gtm = {}
-offers_ga = {}
+# =====================================================================
+# 4. ROW-SAFE MATRIX CONSTRUCTOR (PREVENTS SYNTAX ERRORS)
+# =====================================================================
+matrix_rows = [
+    # Company Levels
+    ["📋 COMPANY LEVEL HYPERSCALE PIPELINE", "", "", "", "", ""],
+    ["Starting Headcount (TTM)", int(start_hc["Q1"]), int(start_hc["Q2"]), int(start_hc["Q3"]), int(start_hc["Q4"]), "—"],
+    ["Net Planned Growth", int(net_growth["Q1"]), int(net_growth["Q2"]), int(net_growth["Q3"]), int(net_growth["Q4"]), int(sum(net_growth.values()))],
+    ["TTM Attrition Backfills", int(attrition_backfills["Q1"]), int(attrition_backfills["Q2"]), int(attrition_backfills["Q3"]), int(attrition_backfills["Q4"]), int(sum(attrition_backfills.values()))],
+    ["Ending Headcount Blueprint", int(end_hc["Q1"]), int(end_hc["Q2"]), int(end_hc["Q3"]), int(end_hc["Q4"]), "—"],
+    ["Total Target Hires Needed", int(total_hires_needed["Q1"]), int(total_hires_needed["Q2"]), int(total_hires_needed["Q3"]), int(total_hires_needed["Q4"]), int(sum(total_hires_needed.values()))],
+    
+    # Pipeline Offers
+    ["🎯 PIPELINE PIPELINE OFFERS REQUIRED", "", "", "", "", ""],
+    ["AMER Tech Offers Required", int(offers_tech["Q1"]), int(offers_tech["Q2"]), int(offers_tech["Q3"]), int(offers_tech["Q4"]), int(sum(offers_tech.values()))],
+    ["Global GTM Offers Required", int(offers_gtm["Q1"]), int(offers_gtm["Q2"]), int(offers_gtm["Q3"]), int(offers_gtm["Q4"]), int(sum(offers_gtm.values()))],
+    ["G&A Offers Required", int(offers_ga["Q1"]), int(offers_ga["Q2"]), int(offers_ga["Q3"]), int(offers_ga["Q4"]), int(sum(offers_ga.values()))],
+    
+    # TA Org Capacity Requirements
+    ["🛠️ TALENT ACQUISITION ORG CAPACITY REQUIREMENTS", "", "", "", "", ""],
+    ["Technical Recruiters Required", int(req_tech_rec["Q1"]), int(req_tech_rec["Q2"]), int(req_tech_rec["Q3"]), int(req_tech_rec["Q4"]), "—"],
+    ["GTM Recruiters Required", int(req_gtm_rec["Q1"]), int(req_gtm_rec["Q2"]), int(req_gtm_rec["Q3"]), int(req_gtm_rec["Q4"]), "—"],
+    ["G&A Recruiters Required", int(req_ga_rec["Q1"]), int(req_ga_rec["Q2"]), int(req_ga_rec["Q3"]), int(req_ga_rec["Q4"]), "—"],
+    ["Dedicated Sourcing Partners", int(req_src["Q1"]), int(req_src["Q2"]), int(req_src["Q3"]), int(req_src["Q4"]), "—"],
+    ["Recruiting Coordinators", int(req_coord["Q1"]), int(req_coord["Q2"]), int(req_coord["Q3"]), int(req_coord["Q4"]), "—"],
+    ["Recruiting Managers Required", int(req_mgr["Q1"]), int(req_mgr["Q2"]), int(req_mgr["Q3"]), int(req_mgr["Q4"]), "—"],
+    ["Talent Operations Leader", int(req_ops["Q1"]), int(req_ops["Q2"]), int(req_ops["Q3"]), int(req_ops["Q4"]), "—"]
+]
 
-for q in quarters:
-    q_hires = total_hires_needed[q]
-    
-    # Segment hire targets based on departmental weight structures
-    tech_hires = q_hires * tech_alloc
-    gtm_hires = q_hires * gtm_alloc
-    ga_hires = q_hires * ga_alloc
-    
-    # Offers Required = Hires Target / Acceptance Rate (With strict ceiling tracking)
-    offers_tech[q] = math.ceil(tech_hires / tech_accept) if tech_accept > 0 else 0
-    offers_gtm[q] = math.ceil(gtm_hires / gtm_accept) if gtm_accept > 0 else 0
-    offers_ga[q] = math.ceil(ga_hires / ga_accept) if ga_accept > 0 else 0
-
-# Step C: Operational TA Organization Capacity Mapping (Ceiling Logic Applied)
-req_tech_recruiters = {}
-req_gtm_recruiters = {}
-req_ga_recruiters = {}
-req_sourcers = {}
-req_coordinators = {}
-req_managers = {}
-req_ops_leaders = {}
-
-for q in quarters:
-    # Recruiter capacity factors ramping modifiers where applicable
-    tech_capacity_per_recruiter = tech_quota * (1.0 - ramping_penalty)
-    
-    # Recruiters needed = Offers Produced / Quarterly Quota Capacity
-    req_tech_recruiters[q] = math.ceil(offers_tech[q] / tech_capacity_per_recruiter) if tech_capacity_per_recruiter > 0 else 0
-    req_gtm_recruiters[q] = math.ceil(offers_gtm[q] / gtm_ent_quota) if gtm_ent_quota > 0 else 0
-    req_ga_recruiters[q] = math.ceil(offers_ga[q] / ga_quota) if ga_quota > 0 else 0
-    
-    # Sourcing infrastructure layer calculated from recruiter ratios
-    tech_sourcers = req_tech_recruiters[q] * tech_sourcer_ratio
-    gtm_sourcers = req_gtm_recruiters[q] * gtm_sourcer_ratio
-    req_sourcers[q] = math.ceil(tech_sourcers + gtm_sourcers)
-    
-    # Coordinator allocations mapped across core active hiring units
-    total_active_recruiters = req_tech_recruiters[q] + req_gtm_recruiters[q] + req_ga_recruiters[q]
-    req_coordinators[q] = math.ceil(total_active_recruiters * coordinators_per_recruiter)
-    
-    # Management layer matching IC dashboard spans of control
-    total_ics = total_active_recruiters + req_sourcers[q] + req_coordinators[q]
-    req_managers[q] = math.ceil(total_ics / ics_per_manager) if ics_per_manager > 0 else 0
-    
-    # Fixed systemic leadership headcount placement
-    req_ops_leaders[q] = 1
+df_model = pd.DataFrame(
+    matrix_rows, 
+    columns=["Metric Waterfall Profile Layer", "Q1", "Q2", "Q3", "Q4", "12-Month Total"]
+)
 
 # =====================================================================
-# 4. EXECUTABLE DATA PRESENTATION VISUALIZATIONS
+# 5. DATA PRESENTATION LAYOUT
 # =====================================================================
 col_data1, col_data2 = st.columns([1, 4])
 
 with col_data1:
     st.metric("Total 12-Month Target Hires", value=f"{sum(total_hires_needed.values())} Hires")
-    st.metric("Peak Target TA Org Size", value=f"{req_tech_recruiters['Q4'] + req_gtm_recruiters['Q4'] + req_ga_recruiters['Q4'] + req_sourcers['Q4'] + req_coordinators['Q4'] + req_managers['Q4'] + req_ops_leaders['Q4']} FTE")
+    peak_org = req_tech_rec['Q4'] + req_gtm_rec['Q4'] + req_ga_rec['Q4'] + req_src['Q4'] + req_coord['Q4'] + req_mgr['Q4'] + req_ops['Q4']
+    st.metric("Peak Target TA Org Size", value=f"{peak_org} FTE")
 
 with col_data2:
-    # Build complete model dataframe matrix structured matching user requirement output
-    waterfall_matrix = {
-        "Metric Waterfall Profile Layer": [
-            "📋 COMPANY LEVEL HYPERSCALE PIPELINE",
-            "Starting Headcount (TTM)",
-            "Net Planned Growth",
-            "TTM Attrition Backfills",
-            "Ending Headcount Blueprint",
-            "Total Target Hires Needed",
-            "🎯 PIPELINE PIPELINE OFFERS REQUIRED",
-            "AMER Tech Offers Required",
-            "Global GTM Offers Required",
-            "G&A Offers Required",
-            "🛠️ TALENT ACQUISITION ORG CAPACITY REQUIREMENTS",
-            "Technical Recruiters Required",
-            "GTM Recruiters Required",
-            "G&A Recruiters Required",
-            "Dedicated Sourcing Partners",
-            "Recruiting Coordinators",
-            "Recruiting Managers Required",
-            "Talent Operations Leader"
-        ],
-        "Q1": [
-            "", int(start_hc["Q1"]), int(net_growth["Q1"]), int(attrition_backfills["Q1"]), int(end_hc["Q1"]), int(total_hires_needed["Q1"]),
-            "", int(offers_tech["Q1"]), int(offers_gtm["Q1"]), int(offers_ga["Q1"]),
-            "", int(req_tech_recruiters["Q1"]), int(req_gtm_recruiters["Q1"]), int(req_ga_recruiters["Q1"]), int(req_sourcers["Q1"]), int(req_coordinators["Q1"]), int(req_managers["Q1"]), int(req_ops_leaders["Q1"])
-        ],
-        "Q2": [
-            "", int(start_hc["Q2"]), int(net_growth["Q2"]), int(attrition_backfills["Q2"]), int(end_hc["Q2"]), int(total_hires_needed["Q2"]),
-            "", int(offers_tech["Q2"]), int(offers_gtm["Q2"]), int(offers_ga["Q2"]),
-            "", int(req_tech_recruiters["Q2"]), int(req_gtm_recruiters["Q2"]), int(req_ga_recruiters["Q2"]), int(req_sourcers["Q2"]), int(req_coordinators["Q2"]), int(req_managers["Q2"]), int(req_ops_leaders["Q2"])
-        ],
-        "Q3": [
-            "", int(start_hc["Q3"]), int(net_growth["Q3"]), int(attrition_backfills["Q3"]), int(end_hc["Q3"]), int(total_hires_needed["Q3"]),
-            "", int(offers_tech["Q3"]), int(offers_gtm["Q3"]), int(offers_ga["Q3"]),
+    st.dataframe(df_model, use_container_width=True, hide_index=True, height=660)
+
+st.markdown("---")
+st.info("💡 **Operational Logic Note:** Moving control sliders dynamically alters hiring velocities. Fractional values are immediately handled using `math.ceil()`, keeping layout grids aligned.")
