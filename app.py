@@ -148,10 +148,10 @@ df_model = pd.DataFrame(
 )
 
 # =====================================================================
-# 5. DATA PRESENTATION LAYOUT (SAFE SEQUENTIAL LAYOUT)
+# 5. DATA PRESENTATION LAYOUT (FULL WIDE BLOCK-LEVEL LAYOUT)
 # =====================================================================
-col_data1, col_data2 = st.columns([1, 3])
-
-# Populate column 1 with micro highlights using sequential commands
+# Render KPIs cleanly side-by-side above the table using standard horizontal metrics layout
+kpi_col1, kpi_col2 = st.columns(2)
 peak_org = req_tech_rec['Q4'] + req_gtm_rec['Q4'] + req_ga_rec['Q4'] + req_src['Q4'] + req_coord['Q4'] + req_mgr['Q4'] + req_ops['Q4']
-col_data1.metric("Total 12-Month Hires", value=f"{sum(total_hires_needed.values())} Hires")
+
+kpi_col1.metric("Total 12-Month Hires Target", value=f"{sum(total_hires_needed.values())} Hires")
