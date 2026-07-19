@@ -63,7 +63,6 @@ if not math.isclose((tech_alloc + gtm_alloc + ga_alloc), 1.0):
 quarters = ["Q1", "Q2", "Q3", "Q4"]
 
 # Step A: Layout Baseline Growth Distribution Profiles
-# Net Planned Growth per Quarter
 net_growth_per_q = (target_hc - base_hc) / 4
 
 # Initialize tracking dictionaries for quarterly calculations
@@ -80,7 +79,6 @@ for q in quarters:
     net_growth[q] = net_growth_per_q
     
     # Quarterly attrition math mirroring the spreadsheet: ((Start + End) / 2) * (Annual Attrition / 4)
-    # We solve algebraically based on expected ending headcount profile: End = Start + Net Growth
     current_ending_hc = current_starting_hc + net_growth_per_q
     avg_q_hc = (current_starting_hc + current_ending_hc) / 2
     
