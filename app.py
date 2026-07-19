@@ -132,24 +132,28 @@ st.markdown("---")
 # =====================================================================
 st.subheader("📋 Metric Waterfall Model")
 
-# Construct the table row-by-row safely to prevent multi-line string evaluation bugs
+# Pre-convert table values to clean integers to eliminate string expression parsing issues
+s_hc_q1, s_hc_q2, s_hc_q3, s_hc_q4 = int(start_hc['Q1']), int(start_hc['Q2']), int(start_hc['Q3']), int(start_hc['Q4'])
+n_gr_q1, n_gr_q2, n_gr_q3, n_gr_q4 = int(net_growth['Q1']), int(net_growth['Q2']), int(net_growth['Q3']), int(net_growth['Q4'])
+at_bk_q1, at_bk_q2, at_bk_q3, at_bk_q4 = int(attrition_backfills['Q1']), int(attrition_backfills['Q2']), int(attrition_backfills['Q3']), int(attrition_backfills['Q4'])
+e_hc_q1, e_hc_q2, e_hc_q3, e_hc_q4 = int(end_hc['Q1']), int(end_hc['Q2']), int(end_hc['Q3']), int(end_hc['Q4'])
+t_hr_q1, t_hr_q2, t_hr_q3, t_hr_q4 = int(total_hires_needed['Q1']), int(total_hires_needed['Q2']), int(total_hires_needed['Q3']), int(total_hires_needed['Q4'])
+
+o_tc_q1, o_tc_q2, o_tc_q3, o_tc_q4 = int(offers_tech['Q1']), int(offers_tech['Q2']), int(offers_tech['Q3']), int(offers_tech['Q4'])
+o_gt_q1, o_gt_q2, o_gt_q3, o_gt_q4 = int(offers_gtm['Q1']), int(offers_gtm['Q2']), int(offers_gtm['Q3']), int(offers_gtm['Q4'])
+o_ga_q1, o_ga_q2, o_ga_q3, o_ga_q4 = int(offers_ga['Q1']), int(offers_ga['Q2']), int(offers_ga['Q3']), int(offers_ga['Q4'])
+
+r_tc_q1, r_tc_q2, r_tc_q3, r_tc_q4 = int(req_tech_rec['Q1']), int(req_tech_rec['Q2']), int(req_tech_rec['Q3']), int(req_tech_rec['Q4'])
+r_gt_q1, r_gt_q2, r_gt_q3, r_gt_q4 = int(req_gtm_rec['Q1']), int(req_gtm_rec['Q2']), int(req_gtm_rec['Q3']), int(req_gtm_rec['Q4'])
+r_ga_q1, r_ga_q2, r_ga_q3, r_ga_q4 = int(req_ga_rec['Q1']), int(req_ga_rec['Q2']), int(req_ga_rec['Q3']), int(req_ga_rec['Q4'])
+r_sr_q1, r_sr_q2, r_sr_q3, r_sr_q4 = int(req_src['Q1']), int(req_src['Q2']), int(req_src['Q3']), int(req_src['Q4'])
+r_cd_q1, r_cd_q2, r_cd_q3, r_cd_q4 = int(req_coord['Q1']), int(req_coord['Q2']), int(req_coord['Q3']), int(req_coord['Q4'])
+r_mg_q1, r_mg_q2, r_mg_q3, r_mg_q4 = int(req_mgr['Q1']), int(req_mgr['Q2']), int(req_mgr['Q3']), int(req_mgr['Q4'])
+r_op_q1, r_op_q2, r_op_q3, r_op_q4 = int(req_ops['Q1']), int(req_ops['Q2']), int(req_ops['Q3']), int(req_ops['Q4'])
+
+# Construct the table row-by-row safely to prevent multi-line bracket string bugs
 lines = [
     "| Metric Waterfall Profile Layer | Q1 | Q2 | Q3 | Q4 | 12-Month Total |",
     "| :--- | :---: | :---: | :---: | :---: | :---: |",
     "| **📋 COMPANY LEVEL HYPERSCALE PIPELINE** | | | | | |",
-    f"| Starting Headcount (TTM) | {int(start_hc['Q1'])} | {int(start_hc['Q2'])} | {int(start_hc['Q3'])} | {int(start_hc['Q4'])} | — |",
-    f"| Net Planned Growth | {int(net_growth['Q1'])} | {int(net_growth['Q2'])} | {int(net_growth['Q3'])} | {int(net_growth['Q4'])} | {int(sum(net_growth.values()))} |",
-    f"| TTM Attrition Backfills | {int(attrition_backfills['Q1'])} | {int(attrition_backfills['Q2'])} | {int(attrition_backfills['Q3'])} | {int(attrition_backfills['Q4'])} | {int(sum(attrition_backfills.values()))} |",
-    f"| Ending Headcount Blueprint | {int(end_hc['Q1'])} | {int(end_hc['Q2'])} | {int(end_hc['Q3'])} | {int(end_hc['Q4'])} | — |",
-    f"| **Total Target Hires Needed** | **{int(total_hires_needed['Q1'])}** | **{int(total_hires_needed['Q2'])}** | **{int(total_hires_needed['Q3'])}** | **{int(total_hires_needed['Q4'])}** | **{total_hires_sum}** |",
-    "| | | | | | |",
-    "| **🎯 PIPELINE OFFERS REQUIRED** | | | | | |",
-    f"| AMER Tech Offers Required | {int(offers_tech['Q1'])} | {int(offers_tech['Q2'])} | {int(offers_tech['Q3'])} | {int(offers_tech['Q4'])} | {int(sum(offers_tech.values()))} |",
-    f"| Global GTM Offers Required | {int(offers_gtm['Q1'])} | {int(offers_gtm['Q2'])} | {int(offers_gtm['Q3'])} | {int(offers_gtm['Q4'])} | {int(sum(offers_gtm.values()))} |",
-    f"| G&A Offers Required | {int(offers_ga['Q1'])} | {int(offers_ga['Q2'])} | {int(offers_ga['Q3'])} | {int(offers_ga['Q4'])} | {int(sum(offers_ga.values()))} |",
-    "| | | | | | |",
-    "| **🛠️ TALENT ACQUISITION ORG CAPACITY REQUIREMENTS** | | | | | |",
-    f"| Technical Recruiters Required | {int(req_tech_rec['Q1'])} | {int(req_tech_rec['Q2'])} | {int(req_tech_rec['Q3'])} | {int(req_tech_rec['Q4'])} | — |",
-    f"| GTM Recruiters Required | {int(req_gtm_rec['Q1'])} | {int(req_gtm_rec['Q2'])} | {int(req_gtm_rec['Q3'])} | {int(req_gtm_rec['Q4'])} | — |",
-    f"| G&A Recruiters Required | {int(req_ga_rec['Q1'])} | {int(req_ga_rec['Q2'])} | {int(req_ga_rec['Q3'])} | {int(req_ga_rec['Q4'])} | — |",
-    f"| Dedicated Sourcing Partners | {int(req_src['Q1'])} | {int(req_src['Q2'])} | {int(req_src['Q3'])} | {int(req_src['Q4'])} | — |",
+    f"| Starting Headcount (TTM) | {s_hc_q1} | {s_hc_q2} | {s_hc_q3} | {s_hc_q4} | — |",
