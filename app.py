@@ -115,8 +115,13 @@ for q in quarters:
     # Cycle starting headcount forward
     current_starting_hc = current_ending_hc
 
-# Calculations for Totals
+# Pre-calculate totals explicitly
+tot_net_growth = int(sum(net_growth.values()))
+tot_attrition = int(sum(attrition_backfills.values()))
 total_hires_sum = int(sum(total_hires_needed.values()))
+tot_offers_tech = int(sum(offers_tech.values()))
+tot_offers_gtm = int(sum(offers_gtm.values()))
+tot_offers_ga = int(sum(offers_ga.values()))
 peak_org_size = req_tech_rec['Q4'] + req_gtm_rec['Q4'] + req_ga_rec['Q4'] + req_src['Q4'] + req_coord['Q4'] + req_mgr['Q4'] + req_ops['Q4']
 
 # =====================================================================
@@ -128,16 +133,16 @@ kpi2.metric("Peak Target TA Organization Size", value=f"{peak_org_size} FTE")
 st.markdown("---")
 
 # =====================================================================
-# 5. DYNAMIC LINE-SAFE MATRIX TABLE DISPLAY
+# 5. DYNAMIC SAFE MATRIX TABLE PRESENTATION
 # =====================================================================
 st.subheader("📋 Metric Waterfall Model")
 
-# Pre-convert table values to clean integers to eliminate string expression parsing issues
-s_hc_q1, s_hc_q2, s_hc_q3, s_hc_q4 = int(start_hc['Q1']), int(start_hc['Q2']), int(start_hc['Q3']), int(start_hc['Q4'])
-n_gr_q1, n_gr_q2, n_gr_q3, n_gr_q4 = int(net_growth['Q1']), int(net_growth['Q2']), int(net_growth['Q3']), int(net_growth['Q4'])
-at_bk_q1, at_bk_q2, at_bk_q3, at_bk_q4 = int(attrition_backfills['Q1']), int(attrition_backfills['Q2']), int(attrition_backfills['Q3']), int(attrition_backfills['Q4'])
-e_hc_q1, e_hc_q2, e_hc_q3, e_hc_q4 = int(end_hc['Q1']), int(end_hc['Q2']), int(end_hc['Q3']), int(end_hc['Q4'])
-t_hr_q1, t_hr_q2, t_hr_q3, t_hr_q4 = int(total_hires_needed['Q1']), int(total_hires_needed['Q2']), int(total_hires_needed['Q3']), int(total_hires_needed['Q4'])
+# Pre-convert table layout values to plain variables to remove all inline expressions
+s_q1, s_q2, s_q3, s_q4 = int(start_hc['Q1']), int(start_hc['Q2']), int(start_hc['Q3']), int(start_hc['Q4'])
+g_q1, g_q2, g_q3, g_q4 = int(net_growth['Q1']), int(net_growth['Q2']), int(net_growth['Q3']), int(net_growth['Q4'])
+a_q1, a_q2, a_q3, a_q4 = int(attrition_backfills['Q1']), int(attrition_backfills['Q2']), int(attrition_backfills['Q3']), int(attrition_backfills['Q4'])
+e_q1, e_q2, e_q3, e_q4 = int(end_hc['Q1']), int(end_hc['Q2']), int(end_hc['Q3']), int(end_hc['Q4'])
+h_q1, h_q2, h_q3, h_q4 = int(total_hires_needed['Q1']), int(total_hires_needed['Q2']), int(total_hires_needed['Q3']), int(total_hires_needed['Q4'])
 
 o_tc_q1, o_tc_q2, o_tc_q3, o_tc_q4 = int(offers_tech['Q1']), int(offers_tech['Q2']), int(offers_tech['Q3']), int(offers_tech['Q4'])
 o_gt_q1, o_gt_q2, o_gt_q3, o_gt_q4 = int(offers_gtm['Q1']), int(offers_gtm['Q2']), int(offers_gtm['Q3']), int(offers_gtm['Q4'])
@@ -151,9 +156,7 @@ r_cd_q1, r_cd_q2, r_cd_q3, r_cd_q4 = int(req_coord['Q1']), int(req_coord['Q2']),
 r_mg_q1, r_mg_q2, r_mg_q3, r_mg_q4 = int(req_mgr['Q1']), int(req_mgr['Q2']), int(req_mgr['Q3']), int(req_mgr['Q4'])
 r_op_q1, r_op_q2, r_op_q3, r_op_q4 = int(req_ops['Q1']), int(req_ops['Q2']), int(req_ops['Q3']), int(req_ops['Q4'])
 
-# Construct the table row-by-row safely to prevent multi-line bracket string bugs
+# Build clean array matrix strings with no nested calculations inside the format array
 lines = [
     "| Metric Waterfall Profile Layer | Q1 | Q2 | Q3 | Q4 | 12-Month Total |",
     "| :--- | :---: | :---: | :---: | :---: | :---: |",
-    "| **📋 COMPANY LEVEL HYPERSCALE PIPELINE** | | | | | |",
-    f"| Starting Headcount (TTM) | {s_hc_q1} | {s_hc_q2} | {s_hc_q3} | {s_hc_q4} | — |",
